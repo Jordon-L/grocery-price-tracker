@@ -58,57 +58,74 @@ function scrapePrice() {
       let name = data.productName;
       let brand = data.productBrand;
       let productSKU = data.productSKU;
-      let promo = "";
-      let unitPrice = "";
-      let link = window.location.href;
-      let title = document.title;
+      let tag = "regular";
+      let unit = "EA";
       let location = "";
       waitForElm(".fulfillment-mode-button__content__location > span").then(
         (elm: any) => {
           location = elm.textContent;
         }
       );
-
       if (data.dealBadge != null) {
-        waitForElm("div.product-promo__badge-wrapper > div > p").then(
-          (elm: any) => {
-            console.log(elm.textContent);
-            promo = elm.textContent;
-            waitForElm(
-              "#site-content > div > div > div.product-tracking > div.product-details-page-details > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-page-details__content__prices > div > ul > li > span"
-            ).then((elm: any) => {
-              console.log(elm.textContent);
-              unitPrice = elm.textContent;
-              sendToDatabase({
-                name,
-                brand,
-                price,
-                productSKU,
-                promo,
-                unitPrice,
-                link,
-                title,
-                location,
-              });
-              console.log("send");
-            });
+        tag = data.dealBadge;
+        waitForElm(
+          `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
+          div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > 
+          div > div.product-details-deals-badge.product-details-deals-badge--product-details-page-details > div > div > 
+          div.product-promo__badge-wrapper > div > p`
+        ).then((elm: any) => {
+          let promoText = elm.textContent as string;
+          if(tag === "limit"){
+            let array = promoText.split(" ");
+            price = array[0].slice(1);
           }
-        );
+          else if(tag === "multi"){
+            let array = promoText.split(" ");
+            let amount = array[0];
+            price = Number(array[2].slice(1))/Number(amount);
+          }
+          waitForElm(
+            `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
+            div.product-details-page-details__content__name > div > div > 
+            div.product-details-page-details__content__sticky-placeholder > div > 
+            div.product-details-page-details__content__prices > div > ul > li > span > span.price__value.comparison-price-list__item__price__value`
+          ).then((elm: any) => {
+            if (productSKU.includes("KG")) {
+              price = elm.textContent;
+              unit = "KG";
+            }
+            console.log(price, tag, unit);
+            sendToDatabase({
+              name,
+              brand,
+              price,
+              productSKU,
+              tag,
+              unit,
+              location,
+            });
+            console.log("send");
+          });
+        });
       } else {
         waitForElm(
-          "#site-content > div > div > div.product-tracking > div.product-details-page-details > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-page-details__content__prices > div > ul > li > span"
+          `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
+          div.product-details-page-details__content__name > div > div > 
+          div.product-details-page-details__content__sticky-placeholder > div > 
+          div.product-details-page-details__content__prices > div > ul > li > span > span.price__value.comparison-price-list__item__price__value`
         ).then((elm: any) => {
-          console.log(elm.textContent);
-          unitPrice = elm.textContent;
+          if (productSKU.includes("KG")) {
+            price = elm.textContent;
+            unit = "KG";
+          }
+          console.log(price, tag, unit);
           sendToDatabase({
             name,
             brand,
             price,
             productSKU,
-            promo,
-            unitPrice,
-            link,
-            title,
+            tag,
+            unit,
             location,
           });
         });
@@ -124,20 +141,24 @@ function runTracker() {
   ).then((elm: any) => {
     console.log("Product Number");
     //request chart data
-    chrome.runtime.sendMessage({
-      type: "chart",
-      data: { productSKU: elm.textContent },
-    });
-
-    //scrape price
-    scrapePrice();
+    let productSKU = elm.textContent;
+    waitForElm(".fulfillment-mode-button__content__location > span").then(
+      (elm: any) => {
+        let location = elm.textContent;
+        chrome.runtime.sendMessage({
+          type: "chart",
+          data: { productSKU: productSKU, location: location},
+        });
+        scrapePrice();
+      }
+    );
   });
 }
 
-function addToWatchList(){
+function addToWatchList() {
   let link = window.location.href;
   let title = document.title;
-  chrome.runtime.sendMessage({ type: "watchlist", data: {link, title} });
+  chrome.runtime.sendMessage({ type: "watchlist", data: { link, title } });
 }
 
 function createChart() {
@@ -149,7 +170,8 @@ function createChart() {
   const button = document.createElement("button");
   button.textContent = "Add To Watchlist";
   button.style.margin = "10px";
-  button.className = "common-button--theme-base common-button--weight-regular common-button--size-medium";
+  button.className =
+    "common-button--theme-base common-button--weight-regular common-button--size-medium";
   button.addEventListener("click", addToWatchList);
   ctx.id = "price-tracker";
   elm!.prepend(button);
@@ -183,7 +205,5 @@ chrome.runtime.onConnect.addListener(() => {
   }
   runTracker();
 });
-
-
 
 export {};

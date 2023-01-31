@@ -3,10 +3,8 @@ export type Item = {
   name : string
   brand : string;
   productSKU : string;
-  promo?: string;
-  unitPrice: string;
-  link: string;
-  title: string;
+  tag: string;
+  unit: string;
   location: string;
 }
 
