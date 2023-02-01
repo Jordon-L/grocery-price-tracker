@@ -1,6 +1,5 @@
 import { Item, Site } from "./types";
 
-
 chrome.runtime.onInstalled.addListener(() => {
   console.log("onInstalled...");
   chrome.storage.sync.set({ watchlist: [] });
@@ -24,24 +23,28 @@ async function getPrices(productSKU: string, location: string) {
   const body = { productSKU, location };
   chrome.storage.sync.get(["api_key"], async function (items) {
     let key = items["api_key"];
-    const response = await fetch(`https://tracker.jordonlee.com/api/price/${location}/${productSKU}`, {
-      method: "get",
-      headers: { "Content-Type": "application/json", "x-api-key": key},
-    });
-    const data = await response.json(); 
-    console.log(data);   
+    const response = await fetch(
+      `https://tracker.jordonlee.com/api/price/${location}/${productSKU}`,
+      {
+        method: "get",
+        headers: { "Content-Type": "application/json", "x-api-key": key },
+      }
+    );
+    const data = await response.json();
   });
 }
 
-async function addPrice(opts: Item ) {
+async function addPrice(opts: Item) {
   const body = { ...opts };
-
-  const response = await fetch("https://tracker.jordonlee.com/api/price", {
-    method: "post",
-    body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+  chrome.storage.sync.get(["api_key"], async function (items) {
+    let key = items["api_key"];
+    const response = await fetch("https://tracker.jordonlee.com/api/price", {
+      method: "post",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json", "x-api-key": key },
+    });
+    const data = await response.json();
   });
-  const data = await response.json();
 }
 
 function connect(tabId: number) {
@@ -56,7 +59,6 @@ function logURL(requestDetails: any) {
   console.log(`Loading: ${requestDetails.url}`);
   setTimeout(connect, 1000, requestDetails.tabId);
 }
-
 chrome.webRequest.onCompleted.addListener(logURL, {
   urls: ["*://*.realcanadiansuperstore.ca/api/product/*"],
 });
@@ -67,8 +69,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (type == "data") {
     let data = request.data as Item;
     if (data.location != "") {
-      console.log(data.location);
+      console.log(data);
       //add to database
+      addPrice(data);
     }
   } else if (type == "watchlist") {
     let data = request.data as Site;

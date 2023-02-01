@@ -50,13 +50,11 @@ function sendToDatabase(data: Item) {
 function scrapePrice() {
   waitForElm("#site-content > div > div > div.product-tracking").then(
     (elm: HTMLElement) => {
-      console.log(elm.dataset);
       const result = JSON.parse(elm.dataset.trackProductsArray);
-      console.log(result);
       const data = result[0];
       let price = data.productPrice;
       let name = data.productName;
-      let brand = data.productBrand;
+      let brand = data.productBrand || "no brand";
       let productSKU = data.productSKU;
       let tag = "regular";
       let unit = "EA";
@@ -92,6 +90,7 @@ function scrapePrice() {
           ).then((elm: any) => {
             if (productSKU.includes("KG")) {
               price = elm.textContent;
+              price = price.slice(1);
               unit = "KG";
             }
             console.log(price, tag, unit);
@@ -104,7 +103,6 @@ function scrapePrice() {
               unit,
               location,
             });
-            console.log("send");
           });
         });
       } else {
@@ -116,6 +114,7 @@ function scrapePrice() {
         ).then((elm: any) => {
           if (productSKU.includes("KG")) {
             price = elm.textContent;
+            price = price.slice(1);
             unit = "KG";
           }
           console.log(price, tag, unit);
@@ -200,10 +199,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 chrome.runtime.onConnect.addListener(() => {
+  const regex = /\/*\/p\/[a-z0-9_]+/;
   for (const obs of observers) {
     obs.disconnect();
   }
-  runTracker();
+  const found = document.location.pathname.match(regex);
+  if(found != null){
+    runTracker();
+  }
+  
 });
 
 export {};
