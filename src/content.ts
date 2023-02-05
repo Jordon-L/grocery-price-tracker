@@ -1,26 +1,6 @@
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineController,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import bb, { step } from "billboard.js";
+import { renderText } from "chart.js/dist/helpers/helpers.canvas";
 import { Item } from "./types";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineController,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
 
 let observers = [] as MutationObserver[];
 function waitForElm(selector: string) {
@@ -53,6 +33,7 @@ function scrapePrice() {
       const result = JSON.parse(elm.dataset.trackProductsArray);
       const data = result[0];
       let price = data.productPrice;
+      let regularPrice = data.productPrice;
       let name = data.productName;
       let brand = data.productBrand || "no brand";
       let productSKU = data.productSKU;
@@ -73,14 +54,13 @@ function scrapePrice() {
           div.product-promo__badge-wrapper > div > p`
         ).then((elm: any) => {
           let promoText = elm.textContent as string;
-          if(tag === "limit"){
+          if (tag === "limit") {
             let array = promoText.split(" ");
             price = array[0].slice(1);
-          }
-          else if(tag === "multi"){
+          } else if (tag === "multi") {
             let array = promoText.split(" ");
             let amount = array[0];
-            price = Number(array[2].slice(1))/Number(amount);
+            price = Number(array[2].slice(1)) / Number(amount);
           }
           waitForElm(
             `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
@@ -94,15 +74,36 @@ function scrapePrice() {
               unit = "KG";
             }
             console.log(price, tag, unit);
-            sendToDatabase({
-              name,
-              brand,
-              price,
-              productSKU,
-              tag,
-              unit,
-              location,
-            });
+            if (tag === "sale") {
+              sendToDatabase({
+                name,
+                brand,
+                price: regularPrice,
+                productSKU,
+                tag: "regular",
+                unit,
+                location,
+              });
+            } else {
+              sendToDatabase({
+                name,
+                brand,
+                price,
+                productSKU,
+                tag,
+                unit,
+                location,
+              });
+              sendToDatabase({
+                name,
+                brand,
+                price: regularPrice,
+                productSKU,
+                tag: "regular",
+                unit,
+                location,
+              });
+            }
           });
         });
       } else {
@@ -144,11 +145,11 @@ function runTracker() {
     waitForElm(".fulfillment-mode-button__content__location > span").then(
       (elm: any) => {
         let location = elm.textContent;
+        scrapePrice();
         chrome.runtime.sendMessage({
           type: "chart",
-          data: { productSKU: productSKU, location: location},
+          data: { productSKU: productSKU, location: location },
         });
-        scrapePrice();
       }
     );
   });
@@ -160,41 +161,121 @@ function addToWatchList() {
   chrome.runtime.sendMessage({ type: "watchlist", data: { link, title } });
 }
 
-function createChart() {
+function insertData(prices: [], priceArray: string[], dateArray: string[]) {
+  prices.forEach((element: any) => {
+    let date = new Date(element.date).toLocaleDateString("en-US", {
+      timeZone: "UTC",
+    });
+    priceArray.push(element.price);
+    dateArray.push(date);
+  });
+}
+function createChart(data: any) {
+  const formatter = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   const elm = document.querySelector(
-    "#site-content > div > div > div.product-details-accordion"
+    "#site-content > div > div > div.product-tracking"
   );
 
-  const ctx = document.createElement("canvas");
+  const ctx = document.createElement("div");
   const button = document.createElement("button");
   button.textContent = "Add To Watchlist";
-  button.style.margin = "10px";
+  button.style.display = "flex";
   button.className =
     "common-button--theme-base common-button--weight-regular common-button--size-medium";
   button.addEventListener("click", addToWatchList);
   ctx.id = "price-tracker";
-  elm!.prepend(button);
-  elm!.prepend(ctx);
-  new ChartJS(ctx, {
-    type: "line",
+  elm!.append(ctx);
+  elm!.append(button);
+
+  let dateArray = [["x0"], ["x1"], ["x2"]];
+  let priceArray = [["limit"], ["multi"], ["regular"]];
+  insertData(data.limitPrice, priceArray[0], dateArray[0]);
+  insertData(data.multiPrice, priceArray[1], dateArray[1]);
+  insertData(data.regularPrice, priceArray[2], dateArray[2]);
+  let prices = Object.values(data)[0] as any;
+  let unit = prices[0].unit;
+  let chart = bb.generate({
     data: {
-      labels: ["January", "February", "March", "April", "May", "June", "July"],
-      datasets: [
-        {
-          label: "My First Dataset",
-          data: [65, 59, 80, 81, 56, 55, 40],
-          fill: false,
-          borderColor: "rgb(75, 192, 192)",
-          tension: 0.1,
-        },
+      xs: {
+        limit: "x0",
+        multi: "x1",
+        regular: "x2",
+      },
+      columns: [
+        dateArray[0],
+        dateArray[1],
+        dateArray[2],
+        priceArray[0],
+        priceArray[1],
+        priceArray[2],
       ],
+      type: "step",
+      empty: {
+        label: {
+          text: "No Data",
+        },
+      },
     },
+    axis: {
+      x: {
+        type: "timeseries",
+        tick: {
+          format: "%m-%d-%Y",
+          rotate: -60,
+        },
+      },
+      y: {
+        min: 0,
+        padding: {
+          bottom: 0,
+        },
+        tick: {
+          format: (y: number) => formatter.format(y),
+        },
+      },
+    },
+    line: {
+      step: {
+        type: "step-after",
+        tooltipMatch: true,
+      },
+    },
+    point: {
+      r: 5,
+    },
+    grid: {
+      x: {
+        show: true,
+      },
+      y: {
+        show: true,
+      },
+    },
+    padding: {
+      left: 60,
+      right: 60,
+    },
+    tooltip: {
+      format: {
+        value: function (value, ratio, id, index) {
+          return `$${formatter.format(value)}/${unit}`;
+        },
+      },
+    },
+    bindto: "#price-tracker",
   });
+  let d = { limit: "#ed8e07", multi: "#f4e900", regular: "black" };
+
+  chart.data.colors(d);
 }
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   let type = request.type;
   if (type == "chart") {
-    createChart();
+    console.log(request);
+    createChart(request.data);
   }
 });
 
@@ -204,10 +285,9 @@ chrome.runtime.onConnect.addListener(() => {
     obs.disconnect();
   }
   const found = document.location.pathname.match(regex);
-  if(found != null){
+  if (found != null) {
     runTracker();
   }
-  
 });
 
 export {};
