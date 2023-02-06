@@ -5,8 +5,7 @@ function timer(ms: number) { return new Promise(res => setTimeout(res, ms)); }
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("onInstalled...");
   chrome.alarms.clearAll(createAlarm);
-  chrome.storage.sync.set({ api_key: "4b8282fe-cb00-4ba3-ba0c-c8af1e04e92c" });
-  chrome.storage.sync.set({ user_id: "4900d2d2-b722-4378-90b4-c28223401e72" });
+
 });
 
 chrome.alarms.onAlarm.addListener(
