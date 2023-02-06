@@ -1,11 +1,13 @@
 import { Item, Site } from "./types";
+import {config} from "./config"
 
 let openTabs: number[] = [];
 function timer(ms: number) { return new Promise(res => setTimeout(res, ms)); }
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("onInstalled...");
   chrome.alarms.clearAll(createAlarm);
-
+  chrome.storage.sync.set({ api_key: config.MY_KEY });
+  chrome.storage.sync.set({ user_id: config.USER });
 });
 
 chrome.alarms.onAlarm.addListener(
@@ -20,8 +22,7 @@ chrome.alarms.onAlarm.addListener(
           if(Date.now() > elm.time){
             let tab = await chrome.tabs.create({pinned: true, active: false, index:0, url: elm.link});
             openTabs.push(tab.id);
-            var date = new Date();
-            watchlist[index] = {time: Date.now() + 7200000, link: elm.link, title: elm.title};
+            elm.time = Date.now() + 7200000;
             let randomNum = Math.floor(Math.random() * 30) + 15;
             await timer(randomNum*1000);
             closeTab(tab.id);
