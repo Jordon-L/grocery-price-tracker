@@ -11,4 +11,5 @@ export type Item = {
 export type Site = {
   link: string;
   title: string;
+  time: number;
 }

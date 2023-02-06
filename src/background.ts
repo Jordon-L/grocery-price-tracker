@@ -1,36 +1,60 @@
 import { Item, Site } from "./types";
 
-chrome.runtime.onInstalled.addListener(() => {
+let openTabs: number[] = [];
+function timer(ms: number) { return new Promise(res => setTimeout(res, ms)); }
+chrome.runtime.onInstalled.addListener(async () => {
   console.log("onInstalled...");
-  chrome.storage.sync.set({ watchlist: [] });
+  chrome.alarms.clearAll(createAlarm);
   chrome.storage.sync.set({ api_key: "4b8282fe-cb00-4ba3-ba0c-c8af1e04e92c" });
   chrome.storage.sync.set({ user_id: "4900d2d2-b722-4378-90b4-c28223401e72" });
 });
 
-function getProfile() {
-  let id = null;
-  chrome.identity.getProfileUserInfo(
-    ({ accountStatus: "ANY" } as chrome.identity.ProfileDetails,
-    async function (info) {
-      id = info.id;
-      const response = await fetch("https://github.com/");
-      const data = await response.json();
-    })
-  );
+chrome.alarms.onAlarm.addListener(
+  (alarmInfo) => {
+    console.log("alarm", Date.now().toLocaleString("en-us"));
+    if(alarmInfo.name === "track"){
+      chrome.storage.sync.get(["watchlist"], async function (items) {
+        let watchlist = items["watchlist"] as Array<Site>;
+        console.log(watchlist);
+        let index = 0;
+        for(const elm of watchlist){
+          if(Date.now() > elm.time){
+            let tab = await chrome.tabs.create({pinned: true, active: false, index:0, url: elm.link});
+            openTabs.push(tab.id);
+            var date = new Date();
+            watchlist[index] = {time: Date.now() + 7200000, link: elm.link, title: elm.title};
+            let randomNum = Math.floor(Math.random() * 30) + 15;
+            await timer(randomNum*1000);
+            closeTab(tab.id);
+            index++;
+          }
+        }
+        chrome.storage.sync.set({ watchlist: watchlist });
+      });
+    }
+  }
+)
+
+function createAlarm(){
+  console.log("create alarm");
+  chrome.alarms.create("track", {periodInMinutes: 60, delayInMinutes: 1});
 }
 
 async function getPrices(productSKU: string, location: string) {
-  const body = { productSKU, location };
-  chrome.storage.sync.get(["api_key"], async function (items) {
-    let key = items["api_key"];
-    const response = await fetch(
-      `https://tracker.jordonlee.com/api/price/${location}/${productSKU}`,
-      {
-        method: "get",
-        headers: { "Content-Type": "application/json", "x-api-key": key },
-      }
-    );
-    const data = await response.json();
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(["api_key"], async function (items) {
+      let key = items["api_key"];
+
+      const response = await fetch(
+        `https://tracker.jordonlee.com/api/price/${location}/${productSKU}`,
+        {
+          method: "get",
+          headers: { "Content-Type": "application/json", "x-api-key": key },
+        }
+      );
+      const data = await response.json();
+      return resolve(data);
+    });
   });
 }
 
@@ -51,6 +75,13 @@ function connect(tabId: number) {
   chrome.tabs.connect(tabId);
 }
 
+function closeTab(tabId: number){
+  if(openTabs.includes(tabId)){
+    openTabs = openTabs.filter((elm) => elm != tabId);
+    chrome.tabs.remove(tabId);
+  }
+}
+
 function sendMessage(tabId: number, type: string, data: any) {
   chrome.tabs.sendMessage(tabId, { type, data });
 }
@@ -58,12 +89,17 @@ function sendMessage(tabId: number, type: string, data: any) {
 function logURL(requestDetails: any) {
   console.log(`Loading: ${requestDetails.url}`);
   setTimeout(connect, 1000, requestDetails.tabId);
+  
 }
 chrome.webRequest.onCompleted.addListener(logURL, {
   urls: ["*://*.realcanadiansuperstore.ca/api/product/*"],
 });
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(async function (
+  request,
+  sender,
+  sendResponse
+) {
   let type = request.type;
 
   if (type == "data") {
@@ -80,17 +116,21 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     chrome.storage.sync.get(["watchlist"], function (items) {
       let watchlist = items["watchlist"] as Array<Site>;
       let duplicate = watchlist.map((item) => item.link).includes(link);
+      let time = Date.now() + 100000;
       if (duplicate == false) {
-        watchlist.push({ link, title });
+        watchlist.push({ link, title, time});
         chrome.storage.sync.set({ watchlist: watchlist });
       }
     });
   } else if (type == "chart") {
+    if(openTabs.includes(sender.tab.id)){
+      return;
+    }
     let data = request.data;
     console.log(data.productSKU, data.location);
     //call database with product sku
-    getPrices(data.productSKU, data.location);
-    sendMessage(sender.tab.id, "chart", "placeholder");
+    const prices = await getPrices(data.productSKU, data.location);
+    sendMessage(sender.tab.id, "chart", prices);
   }
 });
 export {};

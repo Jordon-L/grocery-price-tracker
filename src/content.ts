@@ -1,5 +1,4 @@
 import bb, { step } from "billboard.js";
-import { renderText } from "chart.js/dist/helpers/helpers.canvas";
 import { Item } from "./types";
 
 let observers = [] as MutationObserver[];
@@ -78,7 +77,7 @@ function scrapePrice() {
               sendToDatabase({
                 name,
                 brand,
-                price: regularPrice,
+                price: price,
                 productSKU,
                 tag: "regular",
                 unit,
@@ -155,10 +154,12 @@ function runTracker() {
   });
 }
 
-function addToWatchList() {
+function addToWatchList(event: Event) {
   let link = window.location.href;
   let title = document.title;
   chrome.runtime.sendMessage({ type: "watchlist", data: { link, title } });
+  let button = document.querySelector(".add-watchlist");
+  button.textContent = "Added";
 }
 
 function insertData(prices: [], priceArray: string[], dateArray: string[]) {
@@ -182,9 +183,8 @@ function createChart(data: any) {
   const ctx = document.createElement("div");
   const button = document.createElement("button");
   button.textContent = "Add To Watchlist";
-  button.style.display = "flex";
   button.className =
-    "common-button--theme-base common-button--weight-regular common-button--size-medium";
+    "common-button--theme-base common-button--weight-regular common-button--size-medium add-watchlist";
   button.addEventListener("click", addToWatchList);
   ctx.id = "price-tracker";
   elm!.append(ctx);
@@ -196,7 +196,11 @@ function createChart(data: any) {
   insertData(data.multiPrice, priceArray[1], dateArray[1]);
   insertData(data.regularPrice, priceArray[2], dateArray[2]);
   let prices = Object.values(data)[0] as any;
-  let unit = prices[0].unit;
+  let unit: any = undefined;
+  if(prices.length != 0 ){
+    unit = prices[0].unit;
+  }
+  
   let chart = bb.generate({
     data: {
       xs: {
@@ -261,6 +265,9 @@ function createChart(data: any) {
     tooltip: {
       format: {
         value: function (value, ratio, id, index) {
+          if(unit == undefined){
+            return formatter.format(value);
+          }
           return `$${formatter.format(value)}/${unit}`;
         },
       },
