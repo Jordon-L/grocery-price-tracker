@@ -3,27 +3,32 @@ import { Site } from "./types";
 chrome.storage.sync.get(["watchlist"], function (items) {
   let watchlist = items["watchlist"]
   console.log(watchlist);
-  let elm = document.getElementById("list");
-  const myList = document.createElement("ul");
+  let elm = document.querySelector(".list");
+  
   for(const item of watchlist){
-    let li = document.createElement("li");
+    const tr = document.createElement("tr");
+    let td = document.createElement("td");
     let link = document.createElement("a");
     link.href = item.link;
     link.target = "_blank";
     link.text = item.title;
-    li.appendChild(link);
-    myList.appendChild(li);
+    td.appendChild(link);
+    tr.appendChild(td);
+    let td2 = document.createElement("td");
     let button = document.createElement("button");
-    li.appendChild(button)
+    button.title = "Remove this item from watchlist";
+    td2.appendChild(button);
+    tr.appendChild(td2);
     button.textContent = "x";
     button.addEventListener("click", () =>{
       chrome.storage.sync.get(["watchlist"], function(items) {
         let list = items["watchlist"];
         let newList = list.filter((elm: any) => elm.link != item.link);
         chrome.storage.sync.set({ watchlist: newList });
-        li.remove();
+        tr.remove();
       })
     })
+    elm.appendChild(tr);
   }
-  elm.appendChild(myList);
+  
 });

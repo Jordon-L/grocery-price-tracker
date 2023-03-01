@@ -31,6 +31,9 @@ function scrapePrice() {
     (elm: HTMLElement) => {
       const result = JSON.parse(elm.dataset.trackProductsArray);
       const data = result[0];
+      if(data == undefined){
+        return;
+      }
       let price = data.productPrice;
       let regularPrice = data.productPrice;
       let name = data.productName;

@@ -6,6 +6,11 @@ function timer(ms: number) { return new Promise(res => setTimeout(res, ms)); }
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("onInstalled...");
   chrome.alarms.clearAll(createAlarm);
+  chrome.storage.sync.get(["watchlist"], async function (items) {
+    if(items === undefined){
+      chrome.storage.sync.set({ watchlist: [] });
+    }
+  });
   chrome.storage.sync.set({ api_key: config.MY_KEY });
   chrome.storage.sync.set({ user_id: config.USER });
 });
@@ -22,10 +27,13 @@ chrome.alarms.onAlarm.addListener(
           if(Date.now() > elm.time){
             let tab = await chrome.tabs.create({pinned: true, active: false, index:0, url: elm.link});
             openTabs.push(tab.id);
-            elm.time = Date.now() + 7200000;
-            let randomNum = Math.floor(Math.random() * 30) + 15;
+            let date = new Date();
+            date.setHours(date.getHours() + 12);
+            date.setHours(0,0,0,0);
+            elm.time = date.getTime();
+            let randomNum = Math.floor(Math.random() * 20) + 15;
             await timer(randomNum*1000);
-            closeTab(tab.id);
+            closeTabs();
             index++;
           }
         }
@@ -75,11 +83,13 @@ function connect(tabId: number) {
   chrome.tabs.connect(tabId);
 }
 
-function closeTab(tabId: number){
-  if(openTabs.includes(tabId)){
-    openTabs = openTabs.filter((elm) => elm != tabId);
-    chrome.tabs.remove(tabId);
+async function closeTabs(){
+  for(const openTab of openTabs){
+    connect(openTab);
+    await timer(2000);
+    chrome.tabs.remove(openTab);
   }
+  openTabs = [];
 }
 
 function sendMessage(tabId: number, type: string, data: any) {
