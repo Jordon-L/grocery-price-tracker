@@ -13,3 +13,6 @@ A price chart and button to add to the watchlist is inserted into the html of th
 This is what is shown when clicking on the chrome extension icon.
 
 ![watchlist](https://user-images.githubusercontent.com/46872554/222058581-f643ff7b-bb79-45f9-8721-88a6a3488c9d.png)
+
+## Additional Info
+[Backend code](https://github.com/Jordon-L/grocery-price-tracker-backend/tree/master)
