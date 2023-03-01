@@ -3,7 +3,8 @@ const path = require('path');
 module.exports = {
   entry: {
     content: './src/content.ts',
-    background: './src/background.ts'
+    background: './src/background.ts',
+    popup: './src/popup.ts'
   },
   module: {
     rules: [
@@ -21,7 +22,4 @@ module.exports = {
     filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
-  optimization: {
-    minimize: false
-},
 };
