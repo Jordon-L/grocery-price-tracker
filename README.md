@@ -1,7 +1,7 @@
 # grocery-price-tracker
 
 ## Why I made this
-With the rise in food price, I created my own price tracker for my local grocery store. (Currently works with Real Canadian Superstore)
+With the rise in food price, I created my own price tracker for my local grocery store. This price tracker uses the user's local browser to mimic the user visiting the pages to circumvent IP bans. (Currently works with Real Canadian Superstore)
 
 ## Images
 
