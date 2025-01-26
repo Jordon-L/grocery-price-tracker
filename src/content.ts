@@ -1,13 +1,12 @@
 import bb, { step } from "billboard.js";
 import { Item } from "./types";
-
+function timer(ms: number) { return new Promise(res => setTimeout(res, ms)); }
 let observers = [] as MutationObserver[];
 function waitForElm(selector: string) {
   return new Promise((resolve) => {
     if (document.querySelector(selector)) {
       return resolve(document.querySelector(selector));
     }
-
     const observer = new MutationObserver(() => {
       if (document.querySelector(selector)) {
         resolve(document.querySelector(selector));
@@ -26,9 +25,11 @@ function sendToDatabase(data: Item) {
   chrome.runtime.sendMessage({ type: "data", data: data });
 }
 
-function scrapePrice() {
+async function scrapePrice() {
+  await timer(3000);
   waitForElm("#site-content > div > div > div.product-tracking").then(
     (elm: HTMLElement) => {
+
       const result = JSON.parse(elm.dataset.trackProductsArray);
       const data = result[0];
       if(data == undefined){
@@ -50,32 +51,27 @@ function scrapePrice() {
       if (data.dealBadge != null) {
         tag = data.dealBadge;
         waitForElm(
-          `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
-          div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > 
-          div > div.product-details-deals-badge.product-details-deals-badge--product-details-page-details > div > div > 
-          div.product-promo__badge-wrapper > div > p`
+          `#site-content > div > div > div.product-tracking > div > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-deals-badge.product-details-deals-badge--product-details-page-details > div > div > div > p`
         ).then((elm: any) => {
           let promoText = elm.textContent as string;
           if (tag === "limit") {
-            let array = promoText.split(" ");
-            price = array[0].slice(1);
+            let priceElm = document.querySelector("#site-content > div > div > div.product-tracking > div > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-page-details__content__prices > div > div > div > span > span.price__value.selling-price-list__item__price.selling-price-list__item__price--sale__value")
+            price = priceElm.textContent;
           } else if (tag === "multi") {
             let array = promoText.split(" ");
             let amount = array[0];
             price = Number(array[2].slice(1)) / Number(amount);
           }
           waitForElm(
-            `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
-            div.product-details-page-details__content__name > div > div > 
-            div.product-details-page-details__content__sticky-placeholder > div > 
-            div.product-details-page-details__content__prices > div > ul > li > span > span.price__value.comparison-price-list__item__price__value`
+            `#site-content > div > div > div.product-tracking > div > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-page-details__content__prices > div.product-prices.product-prices--product-details-page > ul > li:nth-child(1) > span > span.price__value.comparison-price-list__item__price__value`
           ).then((elm: any) => {
             if (productSKU.includes("KG")) {
               price = elm.textContent;
               price = price.slice(1);
+
               unit = "KG";
             }
-            console.log(price, tag, unit);
+            console.log('submit price');
             if (tag === "sale") {
               sendToDatabase({
                 name,
@@ -110,17 +106,13 @@ function scrapePrice() {
         });
       } else {
         waitForElm(
-          `#site-content > div > div > div.product-tracking > div.product-details-page-details > 
-          div.product-details-page-details__content__name > div > div > 
-          div.product-details-page-details__content__sticky-placeholder > div > 
-          div.product-details-page-details__content__prices > div > ul > li > span > span.price__value.comparison-price-list__item__price__value`
+          `#site-content > div > div > div.product-tracking > div > div.product-details-page-details__content__name > div > div > div.product-details-page-details__content__sticky-placeholder > div > div.product-details-page-details__content__prices > div.product-prices.product-prices--product-details-page > ul > li:nth-child(1) > span > span.price__value.comparison-price-list__item__price__value`
         ).then((elm: any) => {
           if (productSKU.includes("KG")) {
             price = elm.textContent;
-            price = price.slice(1);
+            price = price.slice(1); 
             unit = "KG";
           }
-          console.log(price, tag, unit);
           sendToDatabase({
             name,
             brand,
@@ -141,7 +133,6 @@ function runTracker() {
   waitForElm(
     ".product-details-accordion__item > div > div > div > p > span"
   ).then((elm: any) => {
-    console.log("Product Number");
     //request chart data
     let productSKU = elm.textContent;
     waitForElm(".fulfillment-mode-button__content__location > span").then(
@@ -152,7 +143,7 @@ function runTracker() {
           type: "chart",
           data: { productSKU: productSKU, location: location },
         });
-      }
+      } 
     );
   });
 }
@@ -281,23 +272,28 @@ function createChart(data: any) {
 
   chart.data.colors(d);
 }
+
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   let type = request.type;
   if (type == "chart") {
-    console.log(request);
     createChart(request.data);
   }
 });
 
 chrome.runtime.onConnect.addListener(() => {
-  const regex = /\/*\/p\/[a-z0-9_]+/;
+
   for (const obs of observers) {
     obs.disconnect();
   }
-  const found = document.location.pathname.match(regex);
-  if (found != null) {
-    runTracker();
-  }
-});
 
+});
+const regex = /\/p\/[a-z0-9_]+/;
+const found = window.location.pathname.match(regex);
+
+if (found != null) {
+  console.log('run tracker');
+  runTracker();
+}
+console.log(document);
 export {};

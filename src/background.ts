@@ -17,7 +17,6 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.alarms.onAlarm.addListener(
   (alarmInfo) => {
-    console.log("alarm", Date.now().toLocaleString("en-us"));
     if(alarmInfo.name === "track"){
       chrome.storage.sync.get(["watchlist"], async function (items) {
         let watchlist = items["watchlist"] as Array<Site>;
@@ -44,7 +43,7 @@ chrome.alarms.onAlarm.addListener(
 )
 
 function createAlarm(){
-  console.log("create alarm");
+  console.log("create alarmasd");
   chrome.alarms.create("track", {periodInMinutes: 60, delayInMinutes: 1});
 }
 
@@ -115,7 +114,6 @@ chrome.runtime.onMessage.addListener(async function (
   if (type == "data") {
     let data = request.data as Item;
     if (data.location != "") {
-      console.log(data);
       //add to database
       addPrice(data);
     }
@@ -137,7 +135,6 @@ chrome.runtime.onMessage.addListener(async function (
       return;
     }
     let data = request.data;
-    console.log(data.productSKU, data.location);
     //call database with product sku
     const prices = await getPrices(data.productSKU, data.location);
     sendMessage(sender.tab.id, "chart", prices);
