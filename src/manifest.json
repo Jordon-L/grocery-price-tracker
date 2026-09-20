@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Tracker Chrome Extension",
+  "version": "1.0.0",
+  "description": "Chrome extension tracking tool",
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+  "background": {
+    "service_worker": "background.bundle.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.realcanadiansuperstore.ca/*"],
+      "js": ["content.bundle.js"]
+    }
+  ],
+  "host_permissions": [
+    "*://www.realcanadiansuperstore.ca/*",
+    "*://api.pcexpress.ca/*",
+    "*://tracker.jordonlee.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+  
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracker Extension</title>
+  <style>
+    body {
+      width: 380px;
+      margin: 0;
+      padding: 12px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      color: #222;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 4px 0 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td {
+      padding: 8px 4px;
+      border-bottom: 1px solid #e2e2e2;
+      vertical-align: middle;
+    }
+    td.link-cell {
+      width: 100%;
+      overflow: hidden;
+    }
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    button.remove {
+      font-size: 14px;
+      padding: 4px 12px;
+      border: 1px solid #d33;
+      border-radius: 4px;
+      background: #fff;
+      color: #d33;
+      cursor: pointer;
+    }
+    button.remove:hover {
+      background: #d33;
+      color: #fff;
+    }
+    .empty {
+      color: #777;
+      font-size: 15px;
+      padding: 8px 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Watchlist</h1>
+  <div id="root" class='list'></div>
+  <!-- Script bundled by Webpack -->
+  <script src="popup.bundle.js"></script>
+</body>
+</html>
